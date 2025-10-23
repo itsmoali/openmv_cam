@@ -8,7 +8,7 @@ The pipeline is set up to run all necessary steps—from image loading and proce
 
 To execute the entire pipeline, simply run the main script:
 
-python MAIN.py
+<b> MAIN.py </b>
 
 ***
 ## ⚙️ Configuration
