@@ -26,7 +26,7 @@ For visualizing the results:
 
 Refer to the last section in the MAIN.py file. This section contains the code snippet responsible for drawing and displaying the results. You can adjust the plotting settings here.
 ***
-##🚧 Current Implementation Notes
+## 🚧 Current Implementation Notes
 Visualization Limitation
 The current implementation doesn't overlay the final detected lines onto the original RGB image.
 
