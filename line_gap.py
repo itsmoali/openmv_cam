@@ -34,7 +34,7 @@ def normalize_segment_by_index(input_file, max_gap, min_gap, segment_index):
                         pass
     except FileNotFoundError:
         print(f"Error: Input file '{input_file}' not found.")
-        return
+        return None
 
     # Group the segments by Offset X and determine the target offset
     segments_by_offset = {}
@@ -46,7 +46,7 @@ def normalize_segment_by_index(input_file, max_gap, min_gap, segment_index):
     if segment_index >= len(sorted_offsets):
         print(f"Error: Segment index {segment_index} is out of range. Found {
               len(sorted_offsets)} offsets.")
-        return
+        return None
 
     TARGET_OFFSET_X = sorted_offsets[segment_index]
     target_segments = segments_by_offset[TARGET_OFFSET_X]
@@ -133,5 +133,7 @@ def normalize_segment_by_index(input_file, max_gap, min_gap, segment_index):
                     out_f.write(json_data + "\n")
         print(f"\nSuccessfully wrote final normalized data to: {
               output_file}")
+        return output_file
     except Exception as e:
         print(f"Error writing output file: {e}")
+        return None

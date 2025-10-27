@@ -3,6 +3,9 @@ import json
 # Used the create bounding boxes and check for intersections
 def check_lines_in_file(filename, offset_1, offset_2, fixed_height=5, width = 50):
 
+    if filename is None:
+        print(f"Error: filename is None")
+        return []
 
     lines1 = []
     lines2 = []
@@ -97,4 +100,3 @@ def check_lines_in_file(filename, offset_1, offset_2, fixed_height=5, width = 50
 
 
 #results = check_lines_in_file(output_file, 30, 300, fixed_height=3)
-
