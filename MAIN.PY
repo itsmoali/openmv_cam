@@ -1,13 +1,13 @@
-from conf_loader import load_config
+from log_utils import load_env
 from take_img import take_image
 from line_seg import process_image
 from filter import filter_line_segments
-from draw import draw
+from draw import drawing
 from line_gap import normalize_segment_by_index
 from intersection import check_lines_in_file
 
 # Load ROI configurations
-config = load_config("env.txt")
+config = load_env("env.txt")
 
 # Take the Image
 # --------------------UNCOMMENT THE LINE BELOW TO TAKE AN IMAGE------------------
@@ -44,7 +44,7 @@ print("Total number of Waffers found: ", max(left_results, right_results))
 # Draw the final filtered lines
 # ---- Use the following uncommented lines in a different file, to see visualizations (RAM exceeds) ----
 #draw(output_file, height=400, width=620, offset_y=0)
-#img = image.Image("drawn_lines.bmp", copy_to_fb = True)
+
 
 
 
