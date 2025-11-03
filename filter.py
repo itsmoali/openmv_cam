@@ -1,68 +1,65 @@
-import json
 import math
+from utils import log
+"""
+This module provides a pipeline for filtering line segment data that has been
+detected within tiled sections of a larger image. It converts tile-local
+coordinates to global coordinates for filtering (to handle duplicates and
+vertical cutoffs across tiles), and then returns the filtered results in the
+original tile-grouped dictionary structure.
+"""
 
-
-def parse_segments(filename, fixed_offset_y):
+# -----------------------------------------------------------------------------
+# Segment Processing Function
+# -----------------------------------------------------------------------------
+def process_segments(segments_by_offset_x, fixed_offset_y):
     """
-    Loads line segment data from a file and converts local tile coordinates
-    (x1, y1, x2, y2) to global image coordinates by adding the X offset
-    (read from file headers) and a fixed Y offset.
+    Converts the dictionary of raw segment data (grouped by offset_x) into a flat
+    list of dictionaries with global coordinates. This also prepares a 'segment_dict'
+    key for easy reconstruction of the final output dictionary.
 
-    Input file format expected: Interspersed 'Offset X: <value>' headers and
-    single-line JSON objects containing segment data.
+    Args:
+        segments_by_offset_x: Dictionary where keys are 'Offset X' and values are
+                                 lists of raw segment dictionaries (local coordinates).
+        fixed_offset_y: A constant vertical offset applied to all Y coordinates.
 
-    :param filename: Path to the input segment data file.
-    :param fixed_offset_y: A constant vertical offset applied to all Y coordinates.
-    :return: List of dictionaries with global coordinates and metadata, or None on failure.
+    Return:
+        list: List of dictionaries with global coordinates and metadata.
     """
     segments = []
-    current_offset_x = 0
 
-    try:
-        with open(filename, 'r') as f:
-            for line in f:
-                line = line.strip()
+    for current_offset_x, segment_list in segments_by_offset_x.items():
+        for segment_data in segment_list:
 
-                if line.startswith("Offset X: "):
-                    # Update the current horizontal tile offset
-                    current_offset_x = int(line.split(":")[1].strip())
 
-                elif line.startswith("{") and line.endswith("}"):
-                    try:
-                        segment_data = json.loads(line)
+            # Calculate Global Coordinates (used only for filtering)
+            x1 = segment_data["x1"] + current_offset_x
+            y1 = segment_data["y1"] + fixed_offset_y
+            x2 = segment_data["x2"] + current_offset_x
+            y2 = segment_data["y2"] + fixed_offset_y
 
-                        # Calculate Global Coordinates
-                        x1 = segment_data["x1"] + current_offset_x
-                        y1 = segment_data["y1"] + fixed_offset_y
-                        x2 = segment_data["x2"] + current_offset_x
-                        y2 = segment_data["y2"] + fixed_offset_y
-
-                        # Store the segment with its original data and global coordinates
-                        segments.append({
-                            'x1': x1, 'y1': y1, 'x2': x2, 'y2': y2,
-                            'theta': segment_data['theta'],
-                            'original_json': line,
-                            'original_offset_x': current_offset_x
-                        })
-                    except (json.JSONDecodeError, KeyError):
-                        pass
-    except FileNotFoundError:
-        print(f"Error: Input file '{filename}' not found.")
-        return None
+            # Store the segment with its original data and global coordinates
+            segments.append({
+                'x1': x1, 'y1': y1, 'x2': x2, 'y2': y2,
+                'theta': segment_data['theta'],
+                'segment_dict': segment_data, # Store the original dictionary structure
+                'original_offset_x': current_offset_x
+            })
 
     return segments
 
-
-# Filter Functions
-# ---------------------------
-
+# -----------------------------------------------------------------------------
+# Filters out Dulpicates
+# -----------------------------------------------------------------------------
 def filter_duplicates(segments):
     """
     Removes line segments that are duplicates (have the same global endpoints).
     Creates a unique signature by sorting the endpoints.
 
-    :param segments: List of segment dictionaries with global coordinates.
-    :return: List of unique segment dictionaries.
+    Args:
+        segments: List of segment dictionaries with global coordinates.
+
+    Returns:
+        List: List of unique segment dictionaries.
     """
     unique = set()
     filtered_segments = []
@@ -78,14 +75,18 @@ def filter_duplicates(segments):
     print(f"After Duplicates Filter: {len(filtered_segments)}")
     return filtered_segments
 
-
+# -----------------------------------------------------------------------------
+# Filters Lines below a Vertical Cutoff
+# -----------------------------------------------------------------------------
 def filter_vertical_cutoff(segments):
     """
     Implements a Region of Interest (ROI) filter by finding the first vertical line
     and discarding all segments that appear ABOVE that line's minimum Y coordinate.
 
-    :param segments: List of segment dictionaries.
-    :return: List of segments remaining below the determined cutoff Y-coordinate.
+    Args:
+        segments: List of segment dictionaries.
+    Returns:
+        List: List of segments remaining below the determined cutoff Y-coordinate.
     """
 
     # Sort segments top-to-bottom, left-to-right to find the highest cutoff line first
@@ -114,13 +115,17 @@ def filter_vertical_cutoff(segments):
     print("Vertical Cutoff: No vertical line found, keeping all.")
     return segments
 
-
+# -----------------------------------------------------------------------------
+# Filters Only Horizontal Lines
+# -----------------------------------------------------------------------------
 def filter_only_horizontal(segments):
     """
     Final filter to keep only lines with an angle (theta) close to 90 degrees.
 
-    :param segments: List of segment dictionaries.
-    :return: List of segment dictionaries where 80 <= theta <= 100.
+    Args:
+        segments: List of segment dictionaries.
+    Returns:
+        List: List of segment dictionaries where 80 <= theta <= 100.
     """
 
     # Horizontal lines are those with theta between 80 and 100 degrees
@@ -131,52 +136,63 @@ def filter_only_horizontal(segments):
     return filtered_segments
 
 
-# Main Function
-# -----------------------
+# -----------------------------------------------------------------------------
+# Filters Line Segments Main Function
+# -----------------------------------------------------------------------------
 
-def filter_line_segments(input_file, offset_y):
+def filter_line_segments(segment_data_dict, offset_y, logs = False):
     """
-    Main function that orchestrates the loading, filtering, grouping, and saving
-    of line segment data.
+    Processes, filters, and groups line segment data, returning the result
+    as a dictionary structured identically to the input.
 
-    :param input_file: The path to the raw segment data file (e.g., 'IMG_xxx_processed.txt').
-    :param offset_y: The fixed vertical offset to apply during parsing.
-    :return: The path to the newly created filtered output file, or None on failure.
+    Args:
+        segment_data_dict:: Dictionary of raw segment data grouped by offset_x.
+        offset_y: The fixed vertical offset to apply during processing.
+        logs: Boolean flag to enable logging of the filtered results.
+
+    Returns:
+        dict: A dictionary of filtered segment data grouped by offset_x, or None on failure.
     """
 
-    # 1. Load data and convert coordinates
-    segments = parse_segments(input_file, offset_y)
-    if segments is None:
-        return
+    # Process data and convert coordinates
+    segments = process_segments(segment_data_dict, offset_y)
 
-    output_file = str(input_file).replace("_processed.txt", "_filtered.txt")
-    print(output_file)
     print(f"Initial Segments: {len(segments)}")
 
     # 2. Apply Filters sequentially
-    segments = filter_duplicates(segments)      
-    segments = filter_vertical_cutoff(segments) 
-    segments = filter_only_horizontal(segments)  
+    segments = filter_duplicates(segments)
+    segments = filter_vertical_cutoff(segments)
+    segments = filter_only_horizontal(segments)
 
-    # 3. Group filtered lines back by original tile offset
-    groups = {}
+    # 3. Re-group filtered lines into the target output structure (dictionary)
+    # The output structure is {offset_x: [segment_dict, segment_dict, ...]}
+    filtered_groups = {}
+
     for seg in segments:
         offset_x = seg['original_offset_x']
-        if offset_x not in groups:
-            groups[offset_x] = []
-        # Store the original JSON data for clean output
-        groups[offset_x].append(seg['original_json'])
 
-    # 4. Write the final grouped data to the output file
-    try:
-        with open(output_file, 'w') as out_f:
-            # Write headers and segment data, sorted by tile offset
-            for offset_x in sorted(groups.keys()):
-                out_f.write(f"Offset X: {offset_x}\n")
-                for json_data in groups[offset_x]:
-                    out_f.write(json_data + "\n")
-        print("Data written successfully.")
-        print(f"Successfully wrote filtered data to: {output_file}")
-        return output_file
-    except Exception as e:
-        print(f"Error writing output file: {e}")
+        if offset_x not in filtered_groups:
+            filtered_groups[offset_x] = []
+
+        # Append the original segment dictionary stored during processing
+        filtered_groups[offset_x].append(seg['segment_dict'])
+
+    print(f"Successfully processed and grouped filtered data.")
+
+    if logs:
+        try:
+            log("logs.txt", message=filtered_groups, function_name="filter_line_segments")
+        except Exception as log_error:
+            print(f"Logging failed: {log_error}")
+
+    # 4. Return the resulting dictionary
+    return filtered_groups
+from utils import load_env
+from line_detection import process_image
+
+# ---------USAGE-----------
+#img_file = "IMG/binary/IMG_2796.bin"
+#coords = load_env("env.txt")
+#res = process_image(img_file, coords=coords, offset_y=0, sensor_type="VGA", logs= False)
+#results = filter_line_segments(res, offset_y=0, logs=True)
+
