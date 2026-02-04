@@ -72,7 +72,7 @@ def filter_duplicates(segments):
             unique.add(sig)
             filtered_segments.append(seg)
 
-    print(f"After Duplicates Filter: {len(filtered_segments)}")
+    print("After Duplicates Filter: {}".format(len(filtered_segments)))
     return filtered_segments
 
 # -----------------------------------------------------------------------------
@@ -109,7 +109,7 @@ def filter_vertical_cutoff(segments):
         # Keep line segments that are at or below the vertical cutoff line
         filtered_segments = [seg for seg in segments
                              if min(seg['y1'], seg['y2']) >= vertical_line_y_cutoff]
-        print(f"Vertical Cutoff Y found: {vertical_line_y_cutoff}")
+        print("Vertical Cutoff Y found: {}".format(vertical_line_y_cutoff))
         return filtered_segments
 
     print("Vertical Cutoff: No vertical line found, keeping all.")
@@ -132,7 +132,7 @@ def filter_only_horizontal(segments):
     filtered_segments = [seg for seg in segments
                          if 80 <= seg['theta'] <= 100]
 
-    print(f"Final Horizontal Filtered Segments: {len(filtered_segments)}")
+    print("Final Horizontal Filtered Segments: {}".format(len(filtered_segments)))
     return filtered_segments
 
 
@@ -157,7 +157,7 @@ def filter_line_segments(segment_data_dict, offset_y, logs = False):
     # Process data and convert coordinates
     segments = process_segments(segment_data_dict, offset_y)
 
-    print(f"Initial Segments: {len(segments)}")
+    print("Initial Segments: {}".format(len(segments)))
 
     # 2. Apply Filters sequentially
     segments = filter_duplicates(segments)
@@ -177,22 +177,14 @@ def filter_line_segments(segment_data_dict, offset_y, logs = False):
         # Append the original segment dictionary stored during processing
         filtered_groups[offset_x].append(seg['segment_dict'])
 
-    print(f"Successfully processed and grouped filtered data.")
+    print("Successfully processed and grouped filtered data.")
 
     if logs:
         try:
             log("logs.txt", message=filtered_groups, function_name="filter_line_segments")
         except Exception as log_error:
-            print(f"Logging failed: {log_error}")
+            print("Logging failed: {}".format(log_error))
 
     # 4. Return the resulting dictionary
     return filtered_groups
-from utils import load_env
-from line_detection import process_image
-
-# ---------USAGE-----------
-#img_file = "IMG/binary/IMG_2796.bin"
-#coords = load_env("env.txt")
-#res = process_image(img_file, coords=coords, offset_y=0, sensor_type="VGA", logs= False)
-#results = filter_line_segments(res, offset_y=0, logs=True)
 

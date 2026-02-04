@@ -9,7 +9,7 @@ from utils import log, load_env
 # Used to extract tiles and detect line segments
 # -----------------------------------------------------------------------------
 
-def process_image(img_path, coords, offset_y=0, sensor_type="VGA", logs=False):
+def process_image(img_path, coords, offset_y=0, sensor_type="VGA", logs=False, img_width=None, img_height=None):
     """
     Reads a raw image file, extracts image tiles based on specified offsets,
     processes each tile, and detects line segments within it.
@@ -23,10 +23,12 @@ def process_image(img_path, coords, offset_y=0, sensor_type="VGA", logs=False):
         offset_y (int, optional): The fixed vertical offset (Y-coordinate) in pixels
                                   to apply to all tile extractions. Defaults to 0.
         sensor_type (str, optional): Defines the image dimensions and tile size.
-                                     Supported values are "VGA" (640x480 total, 50x480 tile)
-                                     or "QVGA" (320x240 total, 160x120 tile). Defaults to "VGA".
+                                     Supported values are "VGA", "QVGA", "QXGA", "WQXGA2".
+                                     Defaults to "VGA".
         logs (bool, optional): If True, attempts to log the final segment results
                                using the `log` function from `utils`. Defaults to False.
+        img_width (int, optional): Override image width (for dynamic resolution).
+        img_height (int, optional): Override image height (for dynamic resolution).
 
     Returns:
         dict: A dictionary where keys are the **X offsets** (int) and values are
@@ -36,6 +38,22 @@ def process_image(img_path, coords, offset_y=0, sensor_type="VGA", logs=False):
               Example: {50: [{'x1': 5, 'y1': 10, ...}, {...}], 100: [...]}
     """
     try:
+        # Verify file exists before opening
+        try:
+            with open(img_path, "rb") as test:
+                test.read(1)
+        except OSError:
+            # Try with absolute path if relative path fails
+            if not img_path.startswith("/"):
+                alt_path = "/" + img_path
+                try:
+                    with open(alt_path, "rb") as test:
+                        test.read(1)
+                    img_path = alt_path
+                    print("Using absolute path: {}".format(img_path))
+                except OSError:
+                    pass
+        
         # Open the raw image file
         with open(img_path, "rb") as img:
 
@@ -44,19 +62,38 @@ def process_image(img_path, coords, offset_y=0, sensor_type="VGA", logs=False):
                 coords.items(),
                 key=lambda item: int(item[1]))
 
-            print(f"Processing in order: {sorted_data_list}")
+            print("Processing in order: {}".format(sorted_data_list))
 
-            # 2. Set image/tile dimensions based on sensor type
-            if sensor_type == "QVGA":
+            # 2. Set image/tile dimensions based on sensor type or explicit dimensions
+            if img_width and img_height:
+                # Use explicit dimensions
+                Width = img_width
+                Height = img_height
+                # Scale tile width proportionally (base: VGA 640x480, tile 50px)
+                TILE_W = max(50, int(50 * Width / 640))
+                TILE_H = Height
+            elif sensor_type == "QVGA":
                 TILE_W = 160
                 TILE_H = 120
                 Width = 320
                 Height = 240
+            elif sensor_type == "QXGA":
+                TILE_W = 160  # ~50 * 3.2
+                TILE_H = 1536
+                Width = 2048
+                Height = 1536
+            elif sensor_type == "WQXGA2":
+                TILE_W = 200  # ~50 * 4
+                TILE_H = 1944
+                Width = 2592
+                Height = 1944
             else:  # VGA (default)
                 TILE_W = 50
                 TILE_H = 480
                 Width = 640
                 Height = 480
+            
+            print("Image: {}x{}, Tile: {}x{}".format(Width, Height, TILE_W, TILE_H))
 
             results = {}
             for index, offset_str in sorted_data_list:
@@ -94,15 +131,16 @@ def process_image(img_path, coords, offset_y=0, sensor_type="VGA", logs=False):
                 # Assuming log is defined in utils
                 log("logs.txt", message=results, function_name="process_image")
             except Exception as log_error:
-                print(f"Logging failed: {log_error}")
+                print("Logging failed: {}".format(log_error))
 
         return results
 
-    except FileNotFoundError:
-        print(f"An error occurred: Image file '{img_path}' not found.")
+    except OSError as e:
+        # MicroPython uses OSError instead of FileNotFoundError
+        print("An error occurred: Image file '{}' not found: {}".format(img_path, e))
         return None
     except Exception as e:
-        print(f"An error occurred: {e}")
+        print("An error occurred: {}".format(e))
         return None
 
 # -----------------------------------------------------------------------------

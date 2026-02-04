@@ -60,15 +60,15 @@ def normalize_gaps(
     sorted_offsets = sorted(segments_by_offset.keys())
 
     if segment_index >= len(sorted_offsets):
-        print(f"Error: Segment index {segment_index} is out of range. Found {
-              len(sorted_offsets)} offsets.")
+        print("Error: Segment index {} is out of range. Found {} offsets.".format(
+              segment_index, len(sorted_offsets)))
         return {}
 
     TARGET_OFFSET_X = sorted_offsets[segment_index]
     target_segments = segments_by_offset[TARGET_OFFSET_X]
 
-    print(f"Targeting Segment Index {segment_index} (Offset X: {
-          TARGET_OFFSET_X}) for normalization.")
+    print("Targeting Segment Index {} (Offset X: {}) for normalization.".format(
+          segment_index, TARGET_OFFSET_X))
 
     # Apply vertical spacing
 
@@ -87,8 +87,8 @@ def normalize_gaps(
         processed_segments.append(current_segment)
 
         if len(processed_segments) >= LIMIT_LINES:
-            print(f"Normalization for Offset {
-                  TARGET_OFFSET_X} stopped at {LIMIT_LINES} lines.")
+            print("Normalization for Offset {} stopped at {} lines.".format(
+                  TARGET_OFFSET_X, LIMIT_LINES))
             break
 
         if i + 1 < len(target_segments):
@@ -98,8 +98,8 @@ def normalize_gaps(
 
             # Remove lines too close
             if vertical_distance < min_gap:
-                print(f"  [Remove] Line at Y={
-                      next_y} (Distance {vertical_distance} < {min_gap})")
+                print("  [Remove] Line at Y={} (Distance {} < {})".format(
+                      next_y, vertical_distance, min_gap))
                 target_segments.pop(i + 1)
                 # Keep 'i' the same to re-evaluate the new line at i+1
                 continue
@@ -132,8 +132,8 @@ def normalize_gaps(
                 target_segments.insert(i + 1, new_segment)
                 processed_segments.append(new_segment)
 
-                print(f"  [Insert] New line at Y={
-                      new_y} (Distance {vertical_distance} > {max_gap})")
+                print("  [Insert] New line at Y={} (Distance {} > {})".format(
+                      new_y, vertical_distance, max_gap))
 
                 # Advance 'i' by one more to skip the newly inserted line for the next comparison
                 i += 1
@@ -155,26 +155,11 @@ def normalize_gaps(
         final_groups.setdefault(seg['original_offset_x'], []).append(
             seg['original_json'])
 
-    print(f"\nNormalization complete. Returning final data structure.")
+    print("\nNormalization complete. Returning final data structure.")
     # Return the processed data structure instead of writing to a file
     if logs:
         try:
             log("logs.txt", message=final_groups, function_name="normalize_gaps")
         except Exception as log_error:
-            print(f"Logging failed: {log_error}")
+            print("Logging failed: {}".format(log_error))
     return final_groups
-
-#---------USAGE-----------
-#from utils import load_env
-#from line_detection import process_image
-#from filter import filter_line_segments
-#img_file = "IMG/binary/IMG_2796.bin"
-#coords = load_env("env.txt")
-
-#Process the image and detect segments
-#processed = process_image(img_file, coords=coords, offset_y=0, sensor_type="VGA", logs= False)
-# Filter the line segments
-#filtered = filter_line_segments(processed, offset_y=0, logs=True)
-# Normalize the gap for the desired segments [ We dont need to do this for the center one]
-#gaps = normalize_gaps(filtered, max_gap=50, min_gap=10, segment_index=-1)
-#print(gaps)

@@ -1,35 +1,33 @@
-# Line Detection MVP for Wafer Cassette Holder 📏
-This repository contains the Minimum Viable Product (MVP) implementation for the line detection model designed specifically for identifying and normalizing lines on a wafer cassette holder image.
+# Line Detection MVP for Wafer Cassette Holder
+This repository contains the MVP implementation for detecting and normalizing lines on a wafer cassette holder image.
 
-***
+## Getting Started
+The pipeline runs end-to-end from calibrated capture through line detection with a single entry point:
 
-## 🚀 Getting Started
-The pipeline is set up to run all necessary steps—from image loading and processing to final line segment filtering and normalization—with a single command.
+`main.py`
 
-To execute the entire pipeline, simply run the main script:
+## Exposure Calibration and Capture
+Exposure calibration is a required pre-step before any image is sent through the line detection pipeline. The calibration routine measures scene brightness on a low-resolution preview frame, locks exposure and gain, then switches to full-resolution grayscale capture. This keeps the capture consistent while minimizing clipping and shadow loss.
 
-<b> MAIN.py </b>
+Integration path:
 
-***
-## ⚙️ Configuration
-Region of Interest (ROI) Parameters
-To define or adjust the areas of the image the model processes, modify the env.txt file.
+`main.py` → `take_img.py` → `exposure_calibration.py`
 
-Location: env.txt
-***
+`exposure_calibration.py` performs:
+1) Auto-baseline measurement (short metering phase)  
+2) Iterative exposure/gain tuning using histogram targets  
+3) Locking exposure/gain and capturing a full-resolution grayscale frame  
+4) Writing raw bytes to a `.bin` file
 
+The capture output is a raw grayscale binary file (default: `/sdcard/snapshot.bin`). The downstream pipeline assumes this binary format and will not work with JPEG output.
 
-## 📈 Results and Visualization
-To review the output, including the raw coordinates and filtered line segments, look for the generated output files (e.g., IMG_XXXX_gaps.txt).
+## Configuration
+Region of Interest (ROI) parameters live in `env.txt`. Update those values to adjust the processing windows.
 
-For visualizing the results:
+## Results and Visualization
+Pipeline outputs include raw coordinates and filtered line segments (for example: `IMG_XXXX_gaps.txt`).
 
-Refer to the last section in the MAIN.py file. This section contains the code snippet responsible for drawing and displaying the results. You can adjust the plotting settings here.
-***
-## 🚧 Current Implementation Notes
-Visualization Limitation
-The current implementation doesn't overlay the final detected lines onto the original RGB image.
+For visualization, see the final section of `main.py`. That section contains the drawing logic you can tweak.
 
-Reason: The pipeline currently initializes and processes the image using only grayscale images.
-
-Workaround Needed: We'll have to find a workaround to load the original RGB image for visualization, or modify the initial processing, to correctly overlay the final line results.
+## Current Implementation Notes
+The pipeline currently processes grayscale images only, so the final detected lines are not overlaid on the original RGB image. If overlay visualization is needed, we can load the RGB frame alongside the grayscale capture or adjust the processing flow.

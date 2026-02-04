@@ -87,12 +87,13 @@ def load_env(file_path, logs=None):
         if logs:
             log("logs.txt", message=variables, function_name="load_env")
         return variables
-    except FileNotFoundError:
+    except OSError as e:
+        # MicroPython uses OSError instead of FileNotFoundError
         # Handle the common case specifically for a better error message
         raise RuntimeError(
-            f"Failed to load environment variables: File not found at {file_path}")
+            f"Failed to load environment variables: File not found at {file_path}: {e}")
     except Exception as e:
-        # Catch other unexpected errors (e.g., PermissionError)
+        # Catch other unexpected errors
         raise RuntimeError(
             f"Failed to load environment variables from {file_path}: {e}")
 
@@ -105,29 +106,8 @@ def load_env(file_path, logs=None):
 # Camera Control Function
 # -----------------------------------------------------------------------------
 
-def take_image(grayscale=True, resolution=sensor.VGA):
-    """
-    Captures an image using the camera sensor and saves it to the 'IMG' directory.
-    Returns:
-        The filename of the saved image.
-    """
-    sensor.reset()
-    if grayscale:
-        sensor.set_pixformat(sensor.GRAYSCALE)
-    else:
-        sensor.set_pixformat(sensor.RGB565)
-
-    sensor.set_framesize(resolution)
-    sensor.skip_frames(time=2000)
-
-
-    img = sensor.snapshot()
-    timestamp = time.ticks_ms()
-    filename = "snapshot_{}.bin".format(timestamp)
-    img.save(filename)
-    print("Image saved as:", filename)
-
-    return filename
+# NOTE: take_image() removed - use take_img.take_image() instead
+# This function had sensor.reset() which violates OpenMV library rules
 #---------USAGE-----------
 #take_image()
 
